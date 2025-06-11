@@ -47,7 +47,7 @@ const Chat = () => {
     }
   
     const data = await res.json();
-    const newMessage = { question, answer: data.respuesta };
+    const newMessage = { question, answer: data.respuesta, id:data.id };
     setMessages((prev) => [...prev, newMessage]);
     await fetchHistorial(); 
   };
