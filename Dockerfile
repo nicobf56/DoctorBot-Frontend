@@ -7,7 +7,7 @@ RUN npm install
 RUN npm run build
 
 # Etapa 2: Nginx
-FROM nginx:alpine
+FROM nginx:alpine AS prod
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/build /usr/share/nginx/html
