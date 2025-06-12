@@ -8,6 +8,7 @@ const Chat = () => {
   useAutoRefreshToken();
   const [messages, setMessages] = useState([]);
   const [chats, setChats] = useState([]);
+  const [votedChats, setVotedChats] = useState({});
 
   const fetchHistorial = async () => {
     const token = getAccessToken();  // <-- Usar helper
@@ -88,14 +89,41 @@ const sendQuestion = async (question) => {
     }
   };
 
+  const fetchUserVotes = async () => {
+    const token = getAccessToken();
+
+    try {
+      const res = await fetch("http://localhost:8000/api/feedback/user/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Error al obtener votos");
+
+      const data = await res.json();
+
+      
+      const votes = {};
+      data.forEach(v => {
+        votes[v.chat] = v.vote;
+      });
+
+      setVotedChats(votes);
+    } catch (error) {
+      console.error("Error cargando votos del usuario:", error);
+    }
+  };
+
   useEffect(() => {
     fetchHistorial();
+    fetchUserVotes();
   }, []);
 
   return (
     <div className="flex h-screen">
       <Sidebar chats={chats} onSelectChat={handleSelectChat} />
-      <ChatInterface onSend={sendQuestion} messages={messages} />
+      <ChatInterface onSend={sendQuestion} messages={messages} votedChats={votedChats} setVotedChats={setVotedChats}/>
     </div>
   );
 };

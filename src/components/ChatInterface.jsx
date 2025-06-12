@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { getAccessToken } from "../utils/token";
 
-const ChatInterface = ({ onSend, messages }) => {
+const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
   const [input, setInput] = useState("");
   
   const [showCorrection, setShowCorrection] = useState({});
   const [corrections, setCorrections] = useState({});
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const handleSend = () => {
     if (input.trim()) {
@@ -15,70 +16,85 @@ const ChatInterface = ({ onSend, messages }) => {
   };
 
   const toggleCorrectionForm = (index) => {
-  setShowCorrection((prev) => ({ ...prev, [index]: !prev[index] }));
-};
+    setShowCorrection((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
 
-const handleCorrectionChange = (index, value) => {
-  setCorrections((prev) => ({ ...prev, [index]: value }));
-};
+  const handleCorrectionChange = (index, value) => {
+    setCorrections((prev) => ({ ...prev, [index]: value }));
+  };
 
-const sendCorrection = async (chatId, text) => {
-  const token = getAccessToken();
+  const sendCorrection = async (chatId, text) => {
+    const token = getAccessToken();
 
-  const res = await fetch("http://localhost:8000/api/corrections/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ chat: chatId, text }),
-  });
+    const res = await fetch("http://localhost:8000/api/corrections/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ chat: chatId, text }),
+    });
 
-  let data = {};
-  const contentType = res.headers.get("content-type");
+    let data = {};
+    const contentType = res.headers.get("content-type");
 
-  if (contentType && contentType.includes("application/json")) {
-    data = await res.json();
-  }
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    }
 
-  if (res.ok) {
-    alert("Corrección enviada");
-    setCorrections((prev) => ({ ...prev, [chatId]: "" }));
-    setShowCorrection((prev) => ({ ...prev, [chatId]: false }));
-  } else {
-    console.error("Error al enviar corrección:", res.status, data);
-    alert(data.detail || "Error al enviar corrección.");
-  }
-};
+    if (res.ok) {
+      setFeedbackMessage("Corrección enviada");
+      setTimeout(() => setFeedbackMessage(""), 5000);
 
-const handleVote = async (chatId, vote) => {
-  const token = getAccessToken();
-  const payload = { chat: chatId, vote: vote };
+      setCorrections((prev) => ({ ...prev, [chatId]: "" }));
+      setShowCorrection((prev) => ({ ...prev, [chatId]: false }));
+    } else {
+      console.error("Error al enviar corrección:", res.status, data);
+      setFeedbackMessage("Error al enviar corrección");
+      setTimeout(() => setFeedbackMessage(""), 5000);
+    }
+  };
 
-  const res = await fetch("http://localhost:8000/api/feedback/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  const handleVote = async (chatId, vote) => {
+    const token = getAccessToken();
+    const payload = { chat: chatId, vote: vote };
 
-  const resData = await res.json();
+    const res = await fetch("http://localhost:8000/api/feedback/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (res.ok) {
-    alert("Voto registrado");
-  } else {
-    console.error("Error al votar:", res.status, resData);
-    alert("Ya votaste o hubo un error.");
-  }
-};
+    const resData = await res.json();
+
+    if (res.ok) {
+      setVotedChats((prev) => ({ ...prev, [chatId]: vote }));
+      setFeedbackMessage("Voto registrado");
+      setTimeout(() => setFeedbackMessage(""), 5000);
+    } else {
+      console.error("Error al votar:", res.status, resData);
+      alert("Ya votaste o hubo un error.");
+    }
+  };
+
+
+
+
+
 
 
 
   return (
     <div className="flex flex-col flex-1 p-4">
       <div className="flex-1 overflow-y-auto space-y-4">
+        {feedbackMessage && (
+          <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50">
+            {feedbackMessage}
+          </div>
+        )}
         {messages.map((msg, idx) => (
           
           <div key={idx} className="bg-gray-100 p-3 rounded-md space-y-2">
@@ -90,8 +106,8 @@ const handleVote = async (chatId, vote) => {
             </div>
 
             <div className="flex gap-4 items-center">
-              <button onClick={() => handleVote(msg.id, 1)} className="text-green-600">👍</button>
-              <button onClick={() => handleVote(msg.id, -1)} className="text-red-600">👎</button>
+              <button onClick={() => handleVote(msg.id, 1)} className={`px-2 py-1 rounded transition ${votedChats[msg.id] === 1 ? "bg-green-100 text-green-700 font-semibold" : "text-green-600 opacity-60 hover:opacity-100"}`}>👍</button>
+              <button onClick={() => handleVote(msg.id, -1)} className={`px-2 py-1 rounded transition ${votedChats[msg.id] === -1 ? "bg-red-100 text-red-700 font-semibold": "text-red-600 opacity-60 hover:opacity-100"}`}>👎</button>
               <button onClick={() => toggleCorrectionForm(msg.id)} className="text-blue-600 underline">
                 Agregar corrección
               </button>
