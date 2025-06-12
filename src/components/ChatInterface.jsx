@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getAccessToken } from "../utils/token";
+import Toast from "./Toast";
 
 const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
   const [input, setInput] = useState("");
@@ -44,14 +45,13 @@ const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
 
     if (res.ok) {
       setFeedbackMessage("Corrección enviada");
-      setTimeout(() => setFeedbackMessage(""), 5000);
 
       setCorrections((prev) => ({ ...prev, [chatId]: "" }));
       setShowCorrection((prev) => ({ ...prev, [chatId]: false }));
     } else {
       console.error("Error al enviar corrección:", res.status, data);
       setFeedbackMessage("Error al enviar corrección");
-      setTimeout(() => setFeedbackMessage(""), 5000);
+      
     }
   };
 
@@ -73,7 +73,7 @@ const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
     if (res.ok) {
       setVotedChats((prev) => ({ ...prev, [chatId]: vote }));
       setFeedbackMessage("Voto registrado");
-      setTimeout(() => setFeedbackMessage(""), 5000);
+      
     } else {
       console.error("Error al votar:", res.status, resData);
       alert("Ya votaste o hubo un error.");
@@ -90,11 +90,7 @@ const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
   return (
     <div className="flex flex-col flex-1 p-4">
       <div className="flex-1 overflow-y-auto space-y-4">
-        {feedbackMessage && (
-          <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50">
-            {feedbackMessage}
-          </div>
-        )}
+        <Toast message={feedbackMessage} onClose={() => setFeedbackMessage("")} />
         {messages.map((msg, idx) => (
           
           <div key={idx} className="bg-gray-100 p-3 rounded-md space-y-2">
