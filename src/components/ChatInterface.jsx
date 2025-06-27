@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getAccessToken } from "../utils/token";
 import Toast from "./Toast";
+import AnimatedAnswer from "./AnimatedAnswer";
 
 const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
   const [input, setInput] = useState("");
@@ -98,7 +99,9 @@ const ChatInterface = ({ onSend, messages, votedChats, setVotedChats }) => {
               <strong>Pregunta:</strong> {msg.question}
               <br />
               <strong>Respuesta:</strong>{" "}
-              <div dangerouslySetInnerHTML={{ __html: msg.answer }} />
+              {msg.animated
+                ? <AnimatedAnswer text={msg.answer} />
+                : <div dangerouslySetInnerHTML={{ __html: msg.answer }} />}
             </div>
 
             <div className="flex gap-4 items-center">

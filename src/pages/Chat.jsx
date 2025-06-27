@@ -9,9 +9,11 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [chats, setChats] = useState([]);
   const [votedChats, setVotedChats] = useState({});
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
 
   const fetchHistorial = async () => {
-    const token = getAccessToken();  // <-- Usar helper
+    const token = getAccessToken();  
 
     try {
       const response = await fetch("http://localhost:8000/api/historial/", {
@@ -33,7 +35,10 @@ const sendQuestion = async (question) => {
   let token = getAccessToken();
 
   const makeRequest = async () => {
-    const res = await fetch("http://localhost:8000/api/generar-respuesta/", {
+    const url = `http://localhost:8000/api/sessions/${currentSessionId}/ask/`
+
+
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,7 +54,7 @@ const sendQuestion = async (question) => {
         alert("Tu sesión ha expirado. Por favor inicia sesión nuevamente.");
         return;
       }
-      return await makeRequest(); // retry
+      return await makeRequest(); // retry con nuevo token
     }
 
     if (!res.ok) {
@@ -60,7 +65,12 @@ const sendQuestion = async (question) => {
     }
 
     const data = await res.json();
-    const newMessage = { question, answer: data.respuesta, id: data.id };
+    const newMessage = {
+      question,
+      answer: data.respuesta,
+      id: data.id,
+      animated: true,
+    };
     setMessages((prev) => [...prev, newMessage]);
     await fetchHistorial();
   };
@@ -69,23 +79,48 @@ const sendQuestion = async (question) => {
 };
 
 
-  const handleSelectChat = async (chatId) => {
-    const token = getAccessToken();  
+  // const handleSelectChat = async (chatId) => {
+  //   const token = getAccessToken();  
 
+  //   try {
+  //     const res = await fetch(`http://localhost:8000/api/historial/${chatId}/`, {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     });
+
+  //     if (!res.ok) throw new Error("Error al obtener el detalle del chat");
+
+  //     const data = await res.json();
+  //     const fullAnswer = `${data.respuesta}<br><br>${data.referencias}`;
+  //     setMessages([{ id: chatId, question: data.pregunta, answer: fullAnswer, animated: false }]);
+  //   } catch (error) {
+  //     console.error("Error al obtener el chat:", error);
+  //   }
+  // };
+
+  const handleSelectSession = async (sessionId) => {
+    const token  = getAccessToken();
     try {
-      const res = await fetch(`http://localhost:8000/api/historial/${chatId}/`, {
+      const res = await fetch(`http://localhost:8000/api/sessions/${sessionId}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!res.ok) throw new Error("Error al obtener el detalle del chat");
+      
+      if (!res.ok) throw new Error("Error al obtener chats");
 
       const data = await res.json();
-      const fullAnswer = `${data.respuesta}<br><br>${data.referencias}`;
-      setMessages([{ id: chatId, question: data.pregunta, answer: fullAnswer }]);
-    } catch (error) {
-      console.error("Error al obtener el chat:", error);
+      const mapped = data.map((msg) => ({
+        id: msg.id,
+        question: msg.question,
+        answer: `${msg.answer}<br><br>${msg.references}`,
+      }));
+
+      setMessages(mapped);
+      setCurrentSessionId(sessionId);
+    } catch (err) {
+      console.error("Error cargando sesión:", err);
     }
   };
 
@@ -115,14 +150,56 @@ const sendQuestion = async (question) => {
     }
   };
 
+  const createNewSession = async() => {
+    const token = getAccessToken();
+
+    const res = await fetch("http://localhost:8000/api/sessions/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify( {title: "Nueva sesión" })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setCurrentSessionId(data.id);
+      setMessages([]);
+      await fetchHistorial();
+    } else {
+      console.error("Error al crear sesión")
+    }
+
+  };
+
+  const fetchSessions = async () => {
+    const token = getAccessToken();
+
+    try {
+      const res = await fetch("http://localhost:8000/api/sessions/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Error al obtener sesiones");
+      const data = await res.json();
+      setSessions(data);
+    } catch (err) {
+      console.error("Error cargando sesiones: ", err);
+    }
+
+  };
+
   useEffect(() => {
-    fetchHistorial();
+    fetchSessions();
     fetchUserVotes();
   }, []);
 
   return (
     <div className="flex h-screen">
-      <Sidebar chats={chats} onSelectChat={handleSelectChat} />
+      <Sidebar sessions={sessions} onSelectSession={handleSelectSession} onNewChat={createNewSession}/>
       <ChatInterface onSend={sendQuestion} messages={messages} votedChats={votedChats} setVotedChats={setVotedChats}/>
     </div>
   );
